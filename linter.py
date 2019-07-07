@@ -14,7 +14,7 @@ import logging
 import os
 import re
 import sublime
-from SublimeLinter.lint import Linter
+from SublimeLinter.lint import Linter, persist, util
 
 logger = logging.getLogger('SublimeLinter.clang-tidy')
 
@@ -61,6 +61,18 @@ class ClangTidy(Linter):
         else:
             logger.error('"{}" is not a compilation database.'.format(compdb))
             return ["clang-tidy", "-version"]
+
+    @classmethod
+    def should_lint(cls, view, settings, reason):
+        """Decide whether a file should be linted or not."""
+        if reason == "on_load":
+            # don't lint if the file was just opened and already has errors,
+            # because otherwise we might loose them
+            filename = util.get_filename(view)
+            if persist.file_errors.get(filename):
+                return False
+
+        return super().should_lint(view, settings, reason)
 
     def on_stderr(self, stderr):
         """Filter the output on stderr for actual errors."""
